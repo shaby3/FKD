@@ -29,7 +29,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-/home/cvip/FKD/FKD_soft_label_200_crops_marginal_smoothing_k_5
+FKD_soft_label_200_crops_marginal_smoothing_k_5/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
