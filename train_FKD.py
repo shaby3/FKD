@@ -227,7 +227,7 @@ def main_worker(gpu, ngpus_per_node, args):
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
         else: # Multi-gpu(DDP)
             model.cuda()
-            # DistributedDataParallel will divide and allocate batch_size to all 
+            # DistributedDataParallel will divide and allocate batch_size to all
             # available GPUs if device_ids are not set
             model = torch.nn.parallel.DistributedDataParallel(model)
     elif args.gpu is not None: # single gpu(특정 gpu 선택)
