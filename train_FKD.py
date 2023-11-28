@@ -28,6 +28,7 @@ from utils_FKD import Soft_CrossEntropy, Recover_soft_label
 from utils_FKD import mixup_cutmix
 
 
+
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
@@ -51,6 +52,7 @@ parser.add_argument('-b', '--batch-size', default=1024, type=int,
                     help='mini-batch size (default: 1024), this is the total '
                          'batch size of all GPUs on the current node when '
                          'using Data Parallel or Distributed Data Parallel')
+
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--schedule', default=[120, 240], nargs='*', type=int,
@@ -60,6 +62,7 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
+
 parser.add_argument('-p', '--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
@@ -114,14 +117,35 @@ parser.add_argument('--mixup_switch_prob', type=float, default=0.5,
 
 best_acc1 = 0
 
+'''
+[Normal training]
+python train_FKD.py -a resnet50 --lr 0.1 --num_crops 4 -b 1024 --cos --temp 1.0 --softlabel_path FKD_soft_label_200_crops_marginal_smoothing_k_5 ~/nas/ssd/ILSVRC2012
+
+'''
+
+'''
+[Multi-GPU training]
+
+python train_FKD.py \
+--dist-url 'tcp://127.0.0.1:10001' \
+--dist-backend 'nccl' \
+--multiprocessing-distributed --world-size 1 --rank 0 \
+-a resnet50 --lr 0.1 --num_crops 4 -b 1024 \
+--temp 1.0 --cos -j 32 \
+--save_checkpoint_path ./FKD_nc_4_res50_plain \
+--softlabel_path FKD_soft_label_200_crops_marginal_smoothing_k_5/imagenet/ \
+~/nas/ssd/ILSVRC2012
+'''
 
 def main():
     args = parser.parse_args()
 
+    # check point 
     if not os.path.exists(args.save_checkpoint_path):
         os.makedirs(args.save_checkpoint_path)
 
     # convert to TRUE number of loading-images since we use multiple crops from the same image within a minbatch
+    # 만약 batch-size = 1024, num_crops = 4 -> True number of loading image = 256
     args.batch_size = math.ceil(args.batch_size / args.num_crops)
 
     if args.seed is not None:
@@ -138,9 +162,10 @@ def main():
         warnings.warn('You have chosen a specific GPU. This will completely '
                       'disable data parallelism.')
 
-    if args.dist_url == "env://" and args.world_size == -1:
+    if args.dist_url == "env://" and args.world_size == -1: # dist_url이 env 일 때만
         args.world_size = int(os.environ["WORLD_SIZE"])
 
+    # DDP: world_size == 1, rank == 0 / Normal: world_size == -1, rank == -1
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
 
     ngpus_per_node = torch.cuda.device_count()
@@ -159,9 +184,8 @@ def main():
 def main_worker(gpu, ngpus_per_node, args):
     global best_acc1
     args.gpu = gpu
-
     # suppress printing if not master
-    if args.multiprocessing_distributed and args.gpu != 0:
+    if args.multiprocessing_distributed and args.gpu != 0: # gpu가 0일 경우에만 
         def print_pass(*args):
             pass
         builtins.print = print_pass
@@ -192,7 +216,7 @@ def main_worker(gpu, ngpus_per_node, args):
         # For multiprocessing distributed, DistributedDataParallel constructor
         # should always set the single device scope, otherwise,
         # DistributedDataParallel will use all available devices.
-        if args.gpu is not None:
+        if args.gpu is not None: # Multi-gpu(DDP)
             torch.cuda.set_device(args.gpu)
             model.cuda(args.gpu)
             # When using a single GPU per process and per
@@ -201,15 +225,15 @@ def main_worker(gpu, ngpus_per_node, args):
             args.batch_size = int(args.batch_size / ngpus_per_node)
             args.workers = int((args.workers + ngpus_per_node - 1) / ngpus_per_node)
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-        else:
+        else: # Multi-gpu(DDP)
             model.cuda()
             # DistributedDataParallel will divide and allocate batch_size to all
             # available GPUs if device_ids are not set
             model = torch.nn.parallel.DistributedDataParallel(model)
-    elif args.gpu is not None:
+    elif args.gpu is not None: # single gpu(특정 gpu 선택)
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
-    else:
+    else: # multi-gpu(DP, gpu가 None인 경우)
         # DataParallel will divide and allocate batch_size to all available GPUs
         if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
             model.features = torch.nn.DataParallel(model.features)
@@ -309,7 +333,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.start_epoch !=0 and args.start_epoch < (args.epochs-args.num_crops):
         args.start_epoch = args.start_epoch + args.num_crops - 1
 
-    for epoch in range(args.start_epoch, args.epochs, args.num_crops):
+    for epoch in range(args.start_epoch, args.epochs, args.num_crops): # epoch: 0,4,8 ... 296
         if args.distributed:
             train_sampler.set_epoch(epoch)
         adjust_learning_rate(optimizer, epoch, args)

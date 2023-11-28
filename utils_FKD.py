@@ -84,26 +84,27 @@ class Compose_FKD(torchvision.transforms.Compose):
 class ImageFolder_FKD(torchvision.datasets.ImageFolder):
     def __init__(self, **kwargs):
         self.num_crops = kwargs['num_crops']
-        self.softlabel_path = kwargs['softlabel_path']
+        self.softlabel_path = kwargs['softlabel_path'] # FKD_soft_label_200_crops_marginal_smoothing_k_5/imagenet/
         kwargs.pop('num_crops')
         kwargs.pop('softlabel_path')
         super(ImageFolder_FKD, self).__init__(**kwargs)
 
     def __getitem__(self, index):
             path, target = self.samples[index]
+            # path, target: /home/cvip/nas/ssd/ILSVRC2012/#여기#train/n13133613/n13133613_30658.JPEG, 998
 
             label_path = os.path.join(self.softlabel_path, '/'.join(path.split('/')[-3:]).split('.')[0] + '.tar')
 
             label = torch.load(label_path, map_location=torch.device('cpu'))
+            
+            coords, flip_status, output = label # 하나의 이미지에 n개의 case를 저장
 
-            coords, flip_status, output = label
+            rand_index = torch.randperm(len(output)) # 0~n-1 순열을 임의대로 shuffle
+            soft_target = [] # soft_label list
 
-            rand_index = torch.randperm(len(output))
-            soft_target = []
-
-            sample = self.loader(path)
-            sample_all = [] 
-            hard_target = []
+            sample = self.loader(path) # 이미지
+            sample_all = [] # 변환된 이미지 list, 각각의 shape은 3,224,224
+            hard_target = [] # target
 
             for i in range(self.num_crops):
                 if self.transform is not None:
@@ -114,10 +115,10 @@ class ImageFolder_FKD(torchvision.datasets.ImageFolder):
                 else:
                     coords = None
                     flip_status = None
-                if self.target_transform is not None:
+                if self.target_transform is not None: # 안돌아감
                     target = self.target_transform(target)
 
-            return sample_all, hard_target, soft_target
+            return sample_all, hard_target, soft_target # 변환된 이미지, hard_target, soft_target / list 형태(4개의 crop된 이미지의 정보가 담겨 있으므로)
 
 
 def Recover_soft_label(label, label_type, n_classes):
