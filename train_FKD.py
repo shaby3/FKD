@@ -213,7 +213,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if not torch.cuda.is_available():
         print('using CPU, this will be slow')
     elif args.distributed:
-        # For multiprocessing distributed, DistributedDataParallel constructor
+        # For multiprocessing distributed, DistributedDataParallel constructor 
         # should always set the single device scope, otherwise,
         # DistributedDataParallel will use all available devices.
         if args.gpu is not None: # Multi-gpu(DDP)

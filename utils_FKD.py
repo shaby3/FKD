@@ -91,7 +91,7 @@ class ImageFolder_FKD(torchvision.datasets.ImageFolder):
 
     def __getitem__(self, index):
             path, target = self.samples[index]
-            # path, target: /home/cvip/nas/ssd/ILSVRC2012/#여기#train/n13133613/n13133613_30658.JPEG, 998
+            # path, target: /home/cvip/nas/ssd/ILSVRC2012/#여기#train/n13133613/n13133613_30658.JPEG, 998 
 
             label_path = os.path.join(self.softlabel_path, '/'.join(path.split('/')[-3:]).split('.')[0] + '.tar')
 
@@ -118,7 +118,7 @@ class ImageFolder_FKD(torchvision.datasets.ImageFolder):
                 if self.target_transform is not None: # 안돌아감
                     target = self.target_transform(target)
 
-            return sample_all, hard_target, soft_target # 변환된 이미지, hard_target, soft_target / list 형태(4개의 crop된 이미지의 정보가 담겨 있으므로) 
+            return sample_all, hard_target, soft_target # 변환된 이미지, hard_target, soft_target / list 형태(4개의 crop된 이미지의 정보가 담겨 있으므로)  
 
 
 def Recover_soft_label(label, label_type, n_classes):
