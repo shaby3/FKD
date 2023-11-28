@@ -118,7 +118,7 @@ class ImageFolder_FKD(torchvision.datasets.ImageFolder):
                 if self.target_transform is not None: # 안돌아감
                     target = self.target_transform(target)
 
-            return sample_all, hard_target, soft_target # 변환된 이미지, hard_target, soft_target / list 형태(4개의 crop된 이미지의 정보가 담겨 있으므로) 흠
+            return sample_all, hard_target, soft_target # 변환된 이미지, hard_target, soft_target / list 형태(4개의 crop된 이미지의 정보가 담겨 있으므로)
 
 
 def Recover_soft_label(label, label_type, n_classes):
